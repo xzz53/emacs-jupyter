@@ -1622,9 +1622,7 @@ Return the buffer switched to."
   (if (jupyter-repl-connected-p)
       (let* ((client jupyter-current-client)
              (name (format "*jupyter-scratch[%s]*"
-                           (jupyter-conn-id
-                            (jupyter-kernel-connection
-                             (oref client kernel))))))
+                           (jupyter-conn-id (oref client conn)))))
         (unless (get-buffer name)
           (with-current-buffer (get-buffer-create name)
             (funcall (jupyter-kernel-language-mode client))
