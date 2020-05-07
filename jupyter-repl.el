@@ -1622,7 +1622,12 @@ Return the buffer switched to."
   (if (jupyter-repl-connected-p)
       (let* ((client jupyter-current-client)
              (name (format "*jupyter-scratch[%s]*"
-                           (jupyter-conn-id (oref client conn)))))
+                           (let ((session
+                                  (jupyter-kernel-session
+                                   (jupyter-kernel client))))
+                             (concat " " (truncate-string-to-width
+                                          (jupyter-session-id session)
+                                          9 nil nil "…"))))))
         (unless (get-buffer name)
           (with-current-buffer (get-buffer-create name)
             (funcall (jupyter-kernel-language-mode client))
