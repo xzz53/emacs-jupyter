@@ -474,36 +474,6 @@ back."
                (funcall function v)))
            (oref client requests)))
 
-;;; Event handlers
-
-;;;; Sending/receiving
-
-(defun jupyter--show-event (event)
-  (let ((event-name (upcase (symbol-name (car event))))
-        (repr (cl-case (car event)
-                (sent (format "%s" (cdr event)))
-                (message (cl-destructuring-bind (_ channel _idents . msg) event
-                           (format "%s" (list
-                                         channel
-                                         (jupyter-message-type msg)
-                                         (jupyter-message-content msg)))))
-                (t nil))))
-    (when repr
-      (message "%s" (concat event-name ": " repr)))))
-
-;; TODO: Get rid of this method
-(cl-defmethod jupyter-event-handler ((_client jupyter-kernel-client)
-                                     (event (head sent)))
-  (when jupyter--debug
-    (jupyter--show-event event)))
-
-(cl-defmethod jupyter-event-handler ((client jupyter-kernel-client)
-                                     (event (head message)))
-  (when jupyter--debug
-    (jupyter--show-event event))
-  (cl-destructuring-bind (_ channel _idents . msg) event
-    (jupyter-handle-message client channel msg)))
-
 ;;; Starting communication with a kernel
 
 (cl-defmethod jupyter-start-channels ((client jupyter-kernel-client))
