@@ -330,7 +330,7 @@ For `url-retrieve', the callback will be called with a nil status."
        (jupyter-launch ,kernel)
        (unwind-protect
            (progn ,@body)
-         (jupyter-shutdown ,kernel)))))
+         (jupyter-do-shutdown ,kernel)))))
 
 ;;; Functions
 
