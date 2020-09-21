@@ -251,6 +251,12 @@ passed as the argument has a language of LANG."
 
 ;;; Macros
 
+(defmacro jupyter-with-client (client &rest body)
+  "Set CLIENT as the `jupyter-current-client', evaluate BODY."
+  (declare (indent 1))
+  `(let ((jupyter-current-client ,client))
+     ,@body))
+
 (defmacro define-jupyter-client-handler (type &optional args doc &rest body)
   "Define an implementation of jupyter-handle-TYPE, a Jupyter message handler.
 ARGS is a three element argument specification, with the same
@@ -637,7 +643,7 @@ interpreted as additional CALLBACKS to add to REQ.  So to add
 multiple callbacks you would do
 
     (jupyter-add-callback
-        (jupyter-send client (jupyter-execute-request :code \"1 + 2\"))
+        (jupyter-execute-request :code \"1 + 2\")
       \"status\" (lambda (msg) ...)
       \"execute_reply\" (lambda (msg) ...)
       \"execute_result\" (lambda (msg) ...))"
@@ -920,7 +926,8 @@ user.  Otherwise `read-from-minibuffer' is used."
                          (with-timeout-unsuspend timeout-spec)))
                    (quit ""))))
       (unwind-protect
-          (jupyter-send client (jupyter-input-reply :value value))
+          (jupyter-with-client client
+            (jupyter-input-reply :value value))
         (when (eq password t)
           (clear-string value)))
       value)))
@@ -997,11 +1004,9 @@ text/plain representation."
   (interactive (list (jupyter-read-expression) nil))
   (let ((msg (jupyter-wait-until-received "execute_result"
                (let* ((jupyter-inhibit-handlers t)
-                      (req (jupyter-send
-                            jupyter-current-client
-                            (jupyter-execute-request
-                             :code code
-                             :store-history nil))))
+                      (req (jupyter-execute-request
+                            :code code
+                            :store-history nil)))
                  (prog1 req
                    (jupyter-add-callback req
                      "execute_reply"
@@ -1153,11 +1158,9 @@ current buffer that STR was extracted from.")
   (cl-check-type jupyter-current-client jupyter-kernel-client
                  "Not a valid client")
   (let ((jupyter-inhibit-handlers '(not "input_request"))
-        (req (jupyter-send
-              jupyter-current-client
-              (jupyter-execute-request
-               :code str
-               :store-history nil))))
+        (req (jupyter-execute-request
+              :code str
+              :store-history nil)))
     (prog1 req
       (jupyter-eval-add-callbacks req beg end))))
 
@@ -1439,10 +1442,8 @@ DETAIL is the detail level to use for the request and defaults to
     (error "Need a valid `jupyter-current-client'"))
   (let ((client jupyter-current-client)
         (msg (jupyter-wait-until-received "inspect_reply"
-               (jupyter-send
-                jupyter-current-client
-                (jupyter-inspect-request
-                 :code code :pos pos :detail detail))
+               (jupyter-inspect-request
+                :code code :pos pos :detail detail)
                ;; Longer timeout for the Julia kernel
                jupyter-long-timeout)))
     (if msg
@@ -1786,10 +1787,8 @@ Run FUN when the completions are available."
   (cl-destructuring-bind (code pos)
       (jupyter-code-context 'completion)
     (let ((req (let ((jupyter-inhibit-handlers t))
-                 (jupyter-send
-                  jupyter-current-client
-                  (jupyter-complete-request
-                   :code code :pos pos)))))
+                 (jupyter-complete-request
+                  :code code :pos pos))))
       (prog1 req
         (jupyter-add-callback req "complete_reply" fun)))))
 
@@ -1943,7 +1942,8 @@ name are changed to \"-\" and all uppercase characters lowered."
   (or (oref client kernel-info)
       (let* ((jupyter-inhibit-handlers t)
              (msg (jupyter-wait-until-received "kernel_info_reply"
-                    (jupyter-send client (jupyter-kernel-info-request))
+                    (jupyter-with-client client
+                      (jupyter-kernel-info-request))
                     ;; Go to great lengths to ensure we have waited long
                     ;; enough.  When communicating with slow to start kernels
                     ;; behind a kernel server this is necessary.
