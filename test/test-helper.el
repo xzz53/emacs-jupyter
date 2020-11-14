@@ -459,8 +459,9 @@ results instead of an equality match."
         (org-babel-execute-src-block nil info))
       (org-with-point-at (org-babel-where-is-src-block-result nil info)
         (when (equal (alist-get :async args) "yes")
-          (jupyter-wait-until-idle
-           (jupyter-last-sent-request jupyter-current-client)))
+          ;; Add a delay to try and ensure the last request of the
+          ;; client has been completed.
+          (sleep-for 0.2))
         (let ((element (org-element-context)))
           ;; Handle empty results with just a RESULTS keyword
           ;;
