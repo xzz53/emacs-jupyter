@@ -874,13 +874,16 @@ See `jupyter-eval-short-result-max-lines' and
          (when (> (apply #'+ (mapcar #'length traceback)) 250)
            (jupyter-display-traceback traceback))))
      ("stream"
-      ,(jupyter-message-lambda (name text)
-         (jupyter-with-display-buffer (pcase name
-                                        ("stderr" "error")
-                                        (_ "output"))
-             req
-           (jupyter-insert-ansi-coded-text text)
-           (jupyter-display-current-buffer-guess-where :stream)))))))
+      (lambda (msg)
+        (jupyter-with-message-content msg (name text)
+          (jupyter-with-display-buffer (pcase name
+                                         ("stderr" "error")
+                                         (_ "output"))
+              ;; TODO: Is there a better solution than just having the
+              ;; request be a part of the message property list?
+              (plist-get msg :parent-request)
+            (jupyter-insert-ansi-coded-text text)
+            (jupyter-display-current-buffer-guess-where :stream))))))))
 
 (cl-defgeneric jupyter-eval-string (str &optional beg end)
   "Evaluate STR using the `jupyter-current-client'.
